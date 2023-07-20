@@ -202,3 +202,68 @@ Concat them:
 ```
 cat *.nt > lgd-2015-11-02-all.nt
 ```
+
+## [Wikidata5m](https://deepgraphlearning.github.io/project/wikidata5m)
+
+This dataset has the shortcoming that it is not provided in rdf but must be converted. Our converter covers only parts of it at the moment and does not create any ontological data. 
+
+Download:
+- [Raw](https://www.dropbox.com/s/563omb11cxaqr83/wikidata5m_all_triplet.txt.gz?dl=1)
+- [Corpus](https://www.dropbox.com/s/7jp4ib8zo3i6m10/wikidata5m_text.txt.gz?dl=1)https://www.dropbox.com/s/7jp4ib8zo3i6m10/wikidata5m_text.txt.gz?dl=1
+
+Convert it to java with the following Python3 script:
+```python3
+import gzip
+
+
+def escape_turtle_string(input_string):
+    escape_characters = {
+        '\\': '\\\\',
+        '"': '\\"',
+        '\n': '\\n',
+        '\t': '\\t',
+        '\r': '\\r',
+    }
+    escaped_string = ""
+    for char in input_string:
+        if char in escape_characters:
+            escaped_string += escape_characters[char]
+        else:
+            escaped_string += char
+    return escaped_string
+
+
+output_path = "wikidata5m.ttl"
+
+with open(output_path, 'w') as of:
+    input_gzip_path = "wikidata5m_text.txt.gz"
+    prefixes = {"wd": "http://www.wikidata.org/entity/",
+                "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                "ent": "http://www.wikidata.org/entity/",
+                "prop": "http://www.wikidata.org/wiki/Property:"}
+
+    for k, v in prefixes.items():
+        of.write(f"@prefix {k}: <{v}> .\n")
+        # print(f"@prefix {k}: <{v}> .")
+
+    with gzip.open("wikidata5m_all_triplet.txt.gz", 'rt') as input:
+
+        for line in input:
+            s, p, o = line.split()
+            l = [s, p, o]
+            out = []
+            for y in l:
+                if y[0] == "Q":
+                    out.append("ent:" + y)
+                elif y[0] == "P":
+                    out.append("prop:" + y)
+                else:
+                    out.append(y)
+            of.write(f"{out[0]} {out[1]} {out[2]} .\n")
+    with gzip.open("wikidata5m_text.txt.gz", 'rt') as input:
+        for line in input:
+            sep_pos = line.find("\t")  # it is tab seperated
+            id = line[0:sep_pos]
+            comment = escape_turtle_string(line[sep_pos + 1:-1])  # -1 to remove the trailing \n
+            of.write(f"<wd:{id}> <rdfs:comment> \"{comment}\" .\n")
+```
